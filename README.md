@@ -4,7 +4,7 @@ Production-grade conversational AI agent with a Streamlit UI, LlamaIndex-based m
 
 ## What is implemented
 
-### 1) LlamaIndex conversational agent (`agent.py`)
+### 1) LlamaIndex conversational agent (`llama_index_app/agent.py`)
 - **Multi-agent workflow** (`ReActAgent` + `AgentWorkflow`) with a research agent and optional specialized agents (code execution, image analysis, media analysis, image generation/editing).
 - **Modes**:
   - **API mode**: Gemini or OpenAI (selected per chat in the UI). No vector store; web search returns raw page content.
@@ -12,7 +12,6 @@ Production-grade conversational AI agent with a Streamlit UI, LlamaIndex-based m
 - **Document handling**:
   - Docling for PDFs, Office files, and HTML.
   - CSV/Excel/JSON/text readers for structured data.
-  - Images/audio/video processed through the active multimodal LLM in local mode.
 - **Web search**:
   - DDGS search + content extraction.
   - Local mode: temporary in-memory `VectorStoreIndex` with hierarchical chunking and Jina reranking.
@@ -20,7 +19,7 @@ Production-grade conversational AI agent with a Streamlit UI, LlamaIndex-based m
 - **Code execution** with a restricted global namespace.
 - **Structured answer extraction** via Pydantic `LLMTextCompletionProgram`.
 
-### 2) smolagents runner (`agent2.py`)
+### 2) smolagents runner (`smolagents_app/agent.py`)
 - **smolagents agent** built on `CodeAgent` with:
   - Web search (DuckDuckGo), page visiting, YouTube transcript, Python interpreter, and optional multimodal tool.
   - Optional MCP tool collections (filesystem, GitHub, Brave Search, Slack, Postgres, PubMed).
@@ -40,10 +39,10 @@ Production-grade conversational AI agent with a Streamlit UI, LlamaIndex-based m
 - API-mode document injection (full content inserted into prompt memory).
 
 ### 4) Utilities
-- `utils/vector_store.py`: Chroma-based conversation stores plus a shared library cache, all using Jina embeddings.
+- `llama_index_app/utils/vector_store.py`: Chroma-based conversation stores plus a shared library cache, all using Jina embeddings.
 - `utils/session_manager.py`: session persistence (messages, metadata, agent config).
-- `utils/document_processor.py`: Docling-driven file parsing + web/YT helpers.
-- `mcp_connectors.py`: MCP server registration and loader helpers.
+- `llama_index_app/utils/document_processor.py`: Docling-driven file parsing + web/YT helpers.
+- `smolagents_app/utils/mcp_connectors.py`: MCP server registration and loader helpers.
 
 ## How it works
 
@@ -66,7 +65,9 @@ Production-grade conversational AI agent with a Streamlit UI, LlamaIndex-based m
 ## Best practices
 
 - **Local multi-agent workflows** are GPU-intensive. For Qwen 30B + vision + code models, plan for **L4-class GPU or better**.
-- **Smaller local stacks**: Qwen 4B text-only is the most GPU-friendly option.
+- **Qwen media analysis + image generation/editing** also requires an **L4-class GPU or better**.
+- **GPT-OSS** can run image analysis + strong coding on **16 GB VRAM**.
+- **Ministral** runs well on **16 GB VRAM** and offers native multimodal capabilities.
 - **LlamaIndex local mode** is best for large document sets and offline workflows.
 - **API mode** is best for quick setup and long-context analysis without local hardware requirements.
 
@@ -77,6 +78,13 @@ Use your existing environment and install with:
 ```
 pip install -r requirements.txt
 ```
+
+### Lock dependencies
+```
+uv pip compile requirements.txt -o requirements.lock
+uv pip compile requirements.txt -o requirements.lock --upgrade
+```
+Upgrade the lockfile when `transformers` 5.x is released for Ministral and FP8 compatibility.
 
 ### Run the app
 ```
@@ -137,12 +145,14 @@ Configured in `.streamlit/config.toml` (port, theme, uploads, logging).
 
 ## Repository structure
 
-- `agent.py`: LlamaIndex multi-agent conversational runtime (local and API modes).
-- `agent2.py`: smolagents tool-calling agent (used for HF GAIA challenge).
-- `custom_models.py`: cached model wrappers (Qwen, Ministral, Devstral, Jina embeddings/reranker, API clients).
+- `llama_index_app/agent.py`: LlamaIndex multi-agent conversational runtime (local and API modes).
+- `llama_index_app/custom_models.py`: cached model wrappers (Qwen, Ministral, Devstral, Jina embeddings/reranker, API clients).
+- `llama_index_app/model_wrappers/`: model wrapper implementations.
+- `llama_index_app/utils/`: document processing + vector store manager.
+- `smolagents_app/agent.py`: smolagents tool-calling agent (used for HF GAIA challenge).
+- `smolagents_app/utils/mcp_connectors.py`: MCP server definitions and loader.
 - `app.py`: Streamlit UI entry point.
-- `utils/`: session management, vector store manager, document processing.
-- `mcp_connectors.py`: MCP server definitions and loader.
+- `utils/`: session management.
 
 ## Notes
 - **Embeddings are always Jina** (API and local).

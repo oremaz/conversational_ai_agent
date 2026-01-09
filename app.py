@@ -18,12 +18,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # Import utilities
 from utils.session_manager import SessionManager, ChatSession
-from utils.vector_store import VectorStoreManager
-from utils.document_processor import DocumentProcessor
+from llama_index_app.utils.vector_store import VectorStoreManager
+from llama_index_app.utils.document_processor import DocumentProcessor
 
 # Import agents
-from agent import ConversationalAgent
-from agent2 import GAIAAgent
+from llama_index_app.agent import ConversationalAgent
+from smolagents_app.agent import GAIAAgent
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -131,17 +131,28 @@ def initialize_agent_for_session(session: ChatSession):
                     use_specialized_code_model=agent_config.get("use_specialized_code_model", False),
                     img_generation_enabled=agent_config.get("img_generation_enabled", False),
                     img_editing_enabled=agent_config.get("img_editing_enabled", False),
+                    use_qwen_vl_for_images=agent_config.get("use_qwen_vl_for_images", True),
+                    use_main_model_for_code_agent=agent_config.get("use_main_model_for_code_agent", False),
+                    qwen_vl_model_id=agent_config.get("qwen_vl_model_id"),
+                    rag_provider=agent_config.get("rag_provider", "jina"),
                 )
 
                 st.session_state.agent = agent
 
                 # Initialize vector store ONLY for local mode
                 if agent_config["mode"] == "local":
-                    if st.session_state.vector_store_manager is None:
-                        st.session_state.vector_store_manager = VectorStoreManager()
+                    rag_provider = agent_config.get("rag_provider", "jina")
+                    if (
+                        st.session_state.vector_store_manager is None
+                        or st.session_state.get("vector_store_embedder_provider") != rag_provider
+                    ):
+                        st.session_state.vector_store_manager = VectorStoreManager(
+                            embedder_provider=rag_provider
+                        )
+                        st.session_state.vector_store_embedder_provider = rag_provider
 
                     st.session_state.conversation_index = None
-                    st.success("LlamaIndex initialized with Jina RAG")
+                    st.success(f"LlamaIndex initialized with {rag_provider} RAG")
                 else:
                     st.session_state.vector_store_manager = None
                     st.session_state.conversation_index = None
@@ -293,15 +304,22 @@ def show_new_chat_config():
         else:
             suite = st.selectbox(
                 "Model Suite",
-                ["qwen", "ministral"],
+                ["qwen", "ministral", "gpt-oss"],
                 key="new_chat_suite",
-                help="Qwen: Multimodal models | Ministral: Fast lightweight models"
+                help="Qwen: Multimodal models | Ministral: Fast lightweight models | GPT-OSS: Local OpenAI OSS model"
             )
 
             if suite == "qwen":
                 models = [
                     "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",  # Text-only 30B
                     "Qwen/Qwen3-4B-Instruct-2507-FP8",  # Text-only 4B
+                    "Qwen/Qwen3-VL-4B-Instruct",  # Multimodal VL 4B
+                    "Qwen/Qwen3-VL-8B-Instruct",  # Multimodal VL 8B
+                    "Qwen/Qwen3-VL-30B-A3B-Instruct",  # Multimodal VL 30B
+                ]
+            elif suite == "gpt-oss":
+                models = [
+                    "openai/gpt-oss-20b"
                 ]
             else:
                 models = [
@@ -316,36 +334,115 @@ def show_new_chat_config():
                 key="new_chat_model",
                 help="Main LLM for general tasks"
             )
+            main_is_vl = suite == "qwen" and "VL" in model
 
             # Specialized agents/models toggles (local mode only)
             st.markdown("**Specialized Agents**")
-            
+
+            code_label = "Code Agent (Devstral 24B)"
+            code_help = "Enable Devstral-Small-2-24B for software engineering tasks"
+            if suite == "gpt-oss":
+                code_label = "Code Agent"
+                code_help = "Enable a code execution agent (GPT-OSS or Devstral)"
+            elif suite == "qwen" and model == "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8":
+                code_label = "Code Agent"
+                code_help = "Enable a code execution agent (Qwen 30B or Devstral)"
+
             use_code_llm = st.checkbox(
-                "Code Agent (Devstral 24B)",
+                code_label,
                 value=True,
                 key="new_chat_code_llm",
-                help="Enable Devstral-Small-2-24B for software engineering tasks"
+                help=code_help
             )
-            
+
+            use_main_model_for_code_agent = False
+            if use_code_llm:
+                if suite == "gpt-oss":
+                    code_model_options = [
+                        "Default (Devstral 24B)",
+                        "openai/gpt-oss-20b",
+                    ]
+                    selected_code_model = st.selectbox(
+                        "Code Agent Model",
+                        code_model_options,
+                        key="new_chat_gpt_oss_code_model",
+                        help="Pick which model the code agent should use"
+                    )
+                    use_main_model_for_code_agent = selected_code_model == "openai/gpt-oss-20b"
+                elif suite == "qwen" and model == "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8":
+                    code_model_options = [
+                        "Default (Devstral 24B)",
+                        "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",
+                    ]
+                    selected_code_model = st.selectbox(
+                        "Code Agent Model",
+                        code_model_options,
+                        key="new_chat_qwen_30b_code_model",
+                        help="Pick which model the code agent should use"
+                    )
+                    use_main_model_for_code_agent = (
+                        selected_code_model == "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+                    )
+
+            qwen_vl_model_id = None
+            use_qwen_vl_for_images = False
+            if suite in ("qwen", "gpt-oss") and not main_is_vl:
+                vl_options = [
+                    "None",
+                    "Qwen/Qwen3-VL-4B-Instruct",
+                    "Qwen/Qwen3-VL-8B-Instruct",
+                    "Qwen/Qwen3-VL-30B-A3B-Instruct",
+                ]
+                vl_key = "new_chat_qwen_vl_model" if suite == "qwen" else "new_chat_gpt_oss_vl_model"
+                selected_vl = st.selectbox(
+                    "Image Analysis Model (Qwen3-VL)",
+                    vl_options,
+                    key=vl_key,
+                    help="Pick a specific Qwen3-VL model for image analysis, or select None to use the default toggle"
+                )
+                if selected_vl != "None":
+                    qwen_vl_model_id = selected_vl
+                    use_qwen_vl_for_images = True
+                else:
+                    img_key = "new_chat_qwen_image_agent" if suite == "qwen" else "new_chat_gpt_oss_image_agent"
+                    use_qwen_vl_for_images = st.checkbox(
+                        "Image Analysis (Qwen3-VL)",
+                        value=True,
+                        key=img_key,
+                        help="Enable image analysis using the default Qwen3-VL model"
+                    )
+            elif suite == "qwen" and main_is_vl:
+                use_qwen_vl_for_images = False
+            elif suite == "gpt-oss":
+                use_qwen_vl_for_images = False
+
             use_media_analysis = st.checkbox(
-                "Media Analysis (Audio/Video)",
+                "Media Analysis (Qwen-Omni)",
                 value=False,
                 key="new_chat_media_analysis",
                 help="Enable Qwen-Omni for audio/video transcription and analysis"
             )
-            
+
             use_image_gen = st.checkbox(
                 "Image Generation (Qwen-Image-2512)",
                 value=False,
                 key="new_chat_image_gen",
-                help="Enable text-to-image generation"
+                help="Enable text-to-image generation with Qwen"
             )
-            
+
             use_image_edit = st.checkbox(
                 "Image Editing (Qwen-Image-Edit-2511)",
                 value=False,
                 key="new_chat_image_edit",
-                help="Enable image editing capabilities"
+                help="Enable image editing with Qwen"
+            )
+
+            st.markdown("**Retrieval (RAG)**")
+            rag_provider = st.selectbox(
+                "Embeddings + Reranker",
+                ["jina", "qwen"],
+                key="new_chat_rag_provider",
+                help="Qwen requires Qwen3-VL embedding/reranker scripts to be available",
             )
 
             agent_config = {
@@ -356,12 +453,16 @@ def show_new_chat_config():
                 "media_analysis_enabled": use_media_analysis,
                 "code_execution_enabled": use_code_llm,
                 "img_generation_enabled": use_image_gen,
-                "img_editing_enabled": use_image_edit
+                "img_editing_enabled": use_image_edit,
+                "use_qwen_vl_for_images": use_qwen_vl_for_images,
+                "use_main_model_for_code_agent": use_main_model_for_code_agent,
+                "qwen_vl_model_id": qwen_vl_model_id,
+                "rag_provider": rag_provider,
             }
 
         # MCP Servers (smolagents only)
         if framework == "smolagents":
-            from mcp_connectors import get_available_mcp_servers, check_mcp_server_requirements
+            from smolagents_app.utils.mcp_connectors import get_available_mcp_servers, check_mcp_server_requirements
 
             st.subheader("MCP Servers")
             available_servers = get_available_mcp_servers()
@@ -1351,8 +1452,8 @@ def generate_multimodal_response(
 
         # For LlamaIndex, process media files using read_and_parse_content
         if agent_config["framework"] == "llamaindex":
-            from agent import read_and_parse_content
-            
+            from llama_index_app.ingest import read_and_parse_content
+
             # Process each media file to extract descriptions
             media_descriptions = []
             for path in media_paths:
@@ -1364,11 +1465,11 @@ def generate_multimodal_response(
                 except Exception as e:
                     logger.warning(f"Failed to process media file {path}: {e}")
                     media_descriptions.append(f"File {path}: [Processing failed]")
-            
+
             # Build context with media descriptions and user prompt
             base_prompt = _build_prompt(prompt, session, agent_config)
             multimodal_context = "\n\n".join(media_descriptions + [base_prompt])
-            
+
             response = agent.run(multimodal_context)
             return _parse_agent_response(response)
 

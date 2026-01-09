@@ -64,6 +64,7 @@ openinference-instrumentation-smolagents
 # ============================================================================
 transformers
 accelerate
+kernels
 einops
 sentencepiece
 nest-asyncio                

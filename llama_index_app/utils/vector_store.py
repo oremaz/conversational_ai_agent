@@ -22,13 +22,14 @@ logger = logging.getLogger(__name__)
 class VectorStoreManager:
     """Manage conversation-specific stores and shared cached sources.
 
-    This is only used for LlamaIndex local mode and always uses Jina embeddings.
+    This is only used for LlamaIndex local mode and uses the configured embeddings.
     """
 
     def __init__(
         self,
         conversations_dir: str = "./chroma_db/conversations",
-        library_dir: str = "./chroma_db/library"
+        library_dir: str = "./chroma_db/library",
+        embedder_provider: str = "jina",
     ):
         """Initialize the vector store manager.
 
@@ -43,9 +44,14 @@ class VectorStoreManager:
         self.conversations_dir.mkdir(parents=True, exist_ok=True)
         self.library_dir.mkdir(parents=True, exist_ok=True)
 
-        # Import and initialize Jina embeddings
-        from custom_models import get_or_create_jina_embedder
-        self.embed_model = get_or_create_jina_embedder()
+        # Import and initialize embeddings
+        self.embedder_provider = embedder_provider
+        if self.embedder_provider == "qwen":
+            from ..custom_models import get_or_create_qwen_embedder
+            self.embed_model = get_or_create_qwen_embedder()
+        else:
+            from ..custom_models import get_or_create_jina_embedder
+            self.embed_model = get_or_create_jina_embedder()
 
         # Conversation-specific stores (loaded on demand)
         self.conversation_stores: Dict[str, ChromaVectorStore] = {}
@@ -77,7 +83,7 @@ class VectorStoreManager:
         self.library_index_path = self.library_dir / "library_index.json"
         self.library_index = self._load_library_index()
 
-        logger.info("VectorStoreManager initialized with Jina embeddings")
+        logger.info("VectorStoreManager initialized with %s embeddings", self.embedder_provider)
 
     def _create_chroma_client(self, path: Path):
         """Create a ChromaDB client with fallback settings.
