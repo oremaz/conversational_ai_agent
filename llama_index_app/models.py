@@ -11,11 +11,9 @@ from llama_index.core import Settings
 from .custom_models import (
     get_or_create_jina_reranker,
     get_or_create_jina_embedder,
-    get_or_create_qwen_vl_llm,
-    get_or_create_qwen3_text_llm,
+    get_or_create_qwen35_llm,
     get_or_create_devstral_llm,
     get_or_create_qwen_embedder,
-    get_or_create_qwen_reranker,
     get_or_create_gpt_oss_llm,
     get_or_create_ministral_llm,
     get_or_create_gemini_llm,
@@ -176,13 +174,9 @@ def initialize_models(
             proj_llm_instance = get_or_create_ministral_llm(model_name=model_id, device="auto")
             if use_main_model_for_code_agent:
                 code_llm_instance = proj_llm_instance
-                logger.info("Using Qwen main model for code execution")
+                logger.info("Using Ministral main model for code execution")
             else:
                 code_llm_instance = get_or_create_devstral_llm()
-            if use_qwen_vl_for_images:
-                vl_model = qwen_vl_model_id or "Qwen/Qwen3-VL-8B-Instruct"
-                logger.info("Initializing Qwen3-VL for image analysis: %s", vl_model)
-                img_analysis_llm_instance = get_or_create_qwen_vl_llm(model_name=vl_model, device="auto")
             if media_analysis_enabled:
                 logger.info("Initializing Qwen3-Omni-30B for media analysis")
                 media_analysis_llm_instance = get_or_create_qwen3_omni_llm(
@@ -206,9 +200,9 @@ def initialize_models(
             proj_llm_instance = get_or_create_gpt_oss_llm(model_name=model_id, device="auto")
 
             if use_qwen_vl_for_images:
-                vl_model = qwen_vl_model_id or "Qwen/Qwen3-VL-8B-Instruct"
-                logger.info("Initializing Qwen3-VL for image analysis: %s", vl_model)
-                img_analysis_llm_instance = get_or_create_qwen_vl_llm(
+                vl_model = qwen_vl_model_id or "Qwen/Qwen3.5-4B"
+                logger.info("Initializing Qwen3.5 for image analysis: %s", vl_model)
+                img_analysis_llm_instance = get_or_create_qwen35_llm(
                     model_name=vl_model,
                     device="auto",
                 )
@@ -240,30 +234,9 @@ def initialize_models(
             else:
                 code_llm_instance = get_or_create_devstral_llm()
         else:
-            model_id = local_model_id or "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
-
-            if "VL" in model_id:
-                logger.info("Initializing Qwen main VL model: %s", model_id)
-                proj_llm_instance = get_or_create_qwen_vl_llm(model_name=model_id, device="auto")
-                use_qwen_vl_for_images = False
-            else:
-                logger.info("Initializing Qwen main model: %s", model_id)
-                proj_llm_instance = get_or_create_qwen3_text_llm(model_name=model_id, device="auto")
-
-            if use_qwen_vl_for_images:
-                if qwen_vl_model_id:
-                    vl_model = qwen_vl_model_id
-                    logger.info("Using selected Qwen3-VL model for image analysis: %s", vl_model)
-                elif "4B" in model_id:
-                    vl_model = "Qwen/Qwen3-VL-4B-Instruct"
-                    logger.info("Using Qwen3-VL-4B for image analysis")
-                elif "30B" in model_id:
-                    vl_model = "Qwen/Qwen3-VL-30B-A3B-Instruct"
-                    logger.info("Using Qwen3-VL-30B for image analysis")
-                else:
-                    vl_model = "Qwen/Qwen3-VL-30B-A3B-Instruct"
-                    logger.info("Using default Qwen3-VL-30B for image analysis")
-                img_analysis_llm_instance = get_or_create_qwen_vl_llm(model_name=vl_model, device="auto")
+            model_id = local_model_id or "Qwen/Qwen3.5-35B-A3B"
+            logger.info("Initializing Qwen3.5 model: %s", model_id)
+            proj_llm_instance = get_or_create_qwen35_llm(model_name=model_id, device="auto")
 
             if media_analysis_enabled:
                 logger.info("Initializing Qwen3-Omni-30B for media analysis")

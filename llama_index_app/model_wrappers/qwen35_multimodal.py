@@ -9,9 +9,8 @@ from llama_index.core.llms import CustomLLM, CompletionResponse, CompletionRespo
 from llama_index.core.llms.callbacks import llm_completion_callback
 from llama_index.core.schema import ImageDocument
 from transformers import (
+    AutoModelForCausalLM,
     AutoProcessor,
-    Qwen3VLForConditionalGeneration,
-    Qwen3VLMoeForConditionalGeneration,
     BitsAndBytesConfig,
     TextIteratorStreamer,
 )
@@ -21,13 +20,13 @@ from .utils import prepare_llm_for_inference, truncate_on_stop
 
 _logger = logging.getLogger(__name__)
 
-_DEFAULT_QWEN_VL = "Qwen/Qwen3-VL-30B-A3B-Instruct"
+_DEFAULT_QWEN35 = "Qwen/Qwen3.5-35B-A3B"
 
 
-class Qwen3VLMultiModal(CustomLLM):
-    """CustomLLM wrapper for Qwen3-VL with optional 4-bit quantization."""
+class Qwen35MultiModal(CustomLLM):
+    """CustomLLM wrapper for Qwen3.5 natively multimodal models with optional 4-bit quantization."""
 
-    model_id: str = Field(default=_DEFAULT_QWEN_VL)
+    model_id: str = Field(default=_DEFAULT_QWEN35)
     max_new_tokens: int = Field(default=4096)
     temperature: float = Field(default=0.2)
     top_p: float = Field(default=0.95)
@@ -54,7 +53,7 @@ class Qwen3VLMultiModal(CustomLLM):
     def metadata(self) -> LLMMetadata:
         return LLMMetadata(
             model_name=self.model_id,
-            context_window=256000,
+            context_window=262144,
             num_output=self.max_new_tokens,
             is_chat_model=True,
             is_function_calling_model=False,
@@ -87,29 +86,24 @@ class Qwen3VLMultiModal(CustomLLM):
                 bnb_4bit_compute_dtype=compute_dtype,
             )
         except Exception as exc:
-            _logger.warning("BitsAndBytes unavailable (%s); falling back to fp16 load for Qwen3-VL.", exc)
-
-        model_cls = Qwen3VLMoeForConditionalGeneration if self._is_moe_model() else Qwen3VLForConditionalGeneration
+            _logger.warning("BitsAndBytes unavailable (%s); falling back to fp16 load for Qwen3.5.", exc)
 
         model_kwargs: Dict[str, Any] = {
             "device_map": self.device_map,
             "low_cpu_mem_usage": True,
             "torch_dtype": compute_dtype,
+            "trust_remote_code": True,
         }
         if quant_cfg is not None:
             model_kwargs["quantization_config"] = quant_cfg
         if self.use_flash_attn2:
             model_kwargs["attn_implementation"] = "flash_attention_2"
 
-        self._model = model_cls.from_pretrained(
+        self._model = AutoModelForCausalLM.from_pretrained(
             self.model_id,
             **model_kwargs,
         )
         self._model.eval()
-
-    def _is_moe_model(self) -> bool:
-        name = self.model_id.lower()
-        return "moe" in name or "a3b" in name
 
     def _ensure_hf(self) -> None:
         if getattr(self, "_hf_loaded", False):
@@ -168,7 +162,7 @@ class Qwen3VLMultiModal(CustomLLM):
             input_ids = inputs["input_ids"]
             if input_ids.shape[-1] > self.max_input_tokens:
                 _logger.warning(
-                    "Truncating Qwen3-VL input from %d to %d tokens",
+                    "Truncating Qwen3.5 input from %d to %d tokens",
                     input_ids.shape[-1], self.max_input_tokens
                 )
                 inputs["input_ids"] = input_ids[:, -self.max_input_tokens:]
@@ -176,7 +170,7 @@ class Qwen3VLMultiModal(CustomLLM):
             inputs["attention_mask"] = inputs["attention_mask"][:, -self.max_input_tokens:]
 
         if len(inputs.get("input_ids", [])) > 1:
-            _logger.warning("Trimmed input batch dimension to 1 for Qwen3-VL inference.")
+            _logger.warning("Trimmed input batch dimension to 1 for Qwen3.5 inference.")
             for key in inputs:
                 inputs[key] = inputs[key][:1]
 

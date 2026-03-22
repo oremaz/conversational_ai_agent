@@ -10,12 +10,11 @@ from .model_wrappers.jina_multimodal_reranker import JinaMultimodalReranker
 from .model_wrappers.qwen3_vl_embeddings import Qwen3VLEmbeddings
 from .model_wrappers.qwen3_vl_reranker import Qwen3VLReranker
 from .model_wrappers.devstral_llm import DevstralLLM
-from .model_wrappers.qwen3_vl_multimodal import Qwen3VLMultiModal
+from .model_wrappers.qwen35_multimodal import Qwen35MultiModal
 from .model_wrappers.ministral_multimodal import MinistralMultiModal
 from .model_wrappers.gpt_oss_llm import GPTOSSLLM
 from .model_wrappers.gemini_multimodal import GeminiMultimodalLLM
 from .model_wrappers.openai_multimodal import OpenAIMultimodalLLM
-from .model_wrappers.qwen3_text_llm import Qwen3TextLLM
 from .model_wrappers.qwen3_omni_multimodal import Qwen3OmniMultiModal
 from .model_wrappers.qwen_image_generator import QwenImageGenerator
 from .model_wrappers.qwen_image_editor import QwenImageEditor
@@ -169,9 +168,9 @@ def get_or_create_qwen_reranker(model_name: Optional[str] = None, top_n: int = 5
         return inst
 
 
-def get_or_create_qwen_vl_llm(model_name: Optional[str] = None, device: Optional[str] = None):
-    """Return cached Qwen3VLMultiModal or create one."""
-    key = (model_name or "Qwen/Qwen3-VL-30B-A3B-Instruct", device or "auto")
+def get_or_create_qwen35_llm(model_name: Optional[str] = None, device: Optional[str] = None):
+    """Return cached Qwen35MultiModal or create one."""
+    key = (model_name or "Qwen/Qwen3.5-35B-A3B", device or "auto")
     inst = _LLM_CACHE.get(key)
     if inst is not None:
         return inst
@@ -181,7 +180,7 @@ def get_or_create_qwen_vl_llm(model_name: Optional[str] = None, device: Optional
         if inst is not None:
             return inst
 
-        _logger.info("Creating Qwen3VLMultiModal for key=%s", key)
+        _logger.info("Creating Qwen35MultiModal for key=%s", key)
         try:
             before_alloc = None
             try:
@@ -190,7 +189,7 @@ def get_or_create_qwen_vl_llm(model_name: Optional[str] = None, device: Optional
             except Exception:
                 before_alloc = None
 
-            inst = Qwen3VLMultiModal(model_id=key[0], device_map=key[1])
+            inst = Qwen35MultiModal(model_id=key[0], device_map=key[1])
 
             after_alloc = None
             try:
@@ -200,13 +199,13 @@ def get_or_create_qwen_vl_llm(model_name: Optional[str] = None, device: Optional
                 after_alloc = None
 
             _logger.info(
-                "Qwen3VLMultiModal created for key=%s (mem_before=%s, mem_after=%s)",
+                "Qwen35MultiModal created for key=%s (mem_before=%s, mem_after=%s)",
                 key,
                 before_alloc,
                 after_alloc,
             )
         except Exception:
-            _logger.exception("Failed to create Qwen3VLMultiModal for key=%s", key)
+            _logger.exception("Failed to create Qwen35MultiModal for key=%s", key)
             raise
 
         _LLM_CACHE[key] = inst
@@ -339,24 +338,6 @@ def get_or_create_gpt_oss_llm(model_name: Optional[str] = None, device: Optional
             _logger.exception("Failed to create GPT-OSS LLM for key=%s", key)
             raise
 
-        _LLM_CACHE[key] = inst
-        return inst
-
-
-def get_or_create_qwen3_text_llm(model_name: Optional[str] = None, device: Optional[str] = None):
-    """Return cached Qwen3TextLLM or create one."""
-    key = (model_name or "Qwen/Qwen3-4B-Instruct-2507-FP8", device or "auto")
-    inst = _LLM_CACHE.get(key)
-    if inst is not None:
-        return inst
-
-    with _CACHE_LOCK:
-        inst = _LLM_CACHE.get(key)
-        if inst is not None:
-            return inst
-
-        _logger.info("Creating Qwen3TextLLM for key=%s", key)
-        inst = Qwen3TextLLM(model_id=key[0], device_map=key[1])
         _LLM_CACHE[key] = inst
         return inst
 

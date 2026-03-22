@@ -311,11 +311,8 @@ def show_new_chat_config():
 
             if suite == "qwen":
                 models = [
-                    "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",  # Text-only 30B
-                    "Qwen/Qwen3-4B-Instruct-2507-FP8",  # Text-only 4B
-                    "Qwen/Qwen3-VL-4B-Instruct",  # Multimodal VL 4B
-                    "Qwen/Qwen3-VL-8B-Instruct",  # Multimodal VL 8B
-                    "Qwen/Qwen3-VL-30B-A3B-Instruct",  # Multimodal VL 30B
+                    "Qwen/Qwen3.5-35B-A3B",  # Natively multimodal MoE 35B
+                    "Qwen/Qwen3.5-9B",  # Natively multimodal dense 9B
                 ]
             elif suite == "gpt-oss":
                 models = [
@@ -334,8 +331,6 @@ def show_new_chat_config():
                 key="new_chat_model",
                 help="Main LLM for general tasks"
             )
-            main_is_vl = suite == "qwen" and "VL" in model
-
             # Specialized agents/models toggles (local mode only)
             st.markdown("**Specialized Agents**")
 
@@ -344,9 +339,9 @@ def show_new_chat_config():
             if suite == "gpt-oss":
                 code_label = "Code Agent"
                 code_help = "Enable a code execution agent (GPT-OSS or Devstral)"
-            elif suite == "qwen" and model == "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8":
+            elif suite == "qwen" and model == "Qwen/Qwen3.5-35B-A3B":
                 code_label = "Code Agent"
-                code_help = "Enable a code execution agent (Qwen 30B or Devstral)"
+                code_help = "Enable a code execution agent (Qwen3.5 35B or Devstral)"
 
             use_code_llm = st.checkbox(
                 code_label,
@@ -369,52 +364,45 @@ def show_new_chat_config():
                         help="Pick which model the code agent should use"
                     )
                     use_main_model_for_code_agent = selected_code_model == "openai/gpt-oss-20b"
-                elif suite == "qwen" and model == "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8":
+                elif suite == "qwen" and model == "Qwen/Qwen3.5-35B-A3B":
                     code_model_options = [
                         "Default (Devstral 24B)",
-                        "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",
+                        "Qwen/Qwen3.5-35B-A3B",
                     ]
                     selected_code_model = st.selectbox(
                         "Code Agent Model",
                         code_model_options,
-                        key="new_chat_qwen_30b_code_model",
+                        key="new_chat_qwen_35b_code_model",
                         help="Pick which model the code agent should use"
                     )
                     use_main_model_for_code_agent = (
-                        selected_code_model == "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+                        selected_code_model == "Qwen/Qwen3.5-35B-A3B"
                     )
 
             qwen_vl_model_id = None
             use_qwen_vl_for_images = False
-            if suite in ("qwen", "gpt-oss") and not main_is_vl:
+            if suite == "gpt-oss":
                 vl_options = [
                     "None",
-                    "Qwen/Qwen3-VL-4B-Instruct",
-                    "Qwen/Qwen3-VL-8B-Instruct",
-                    "Qwen/Qwen3-VL-30B-A3B-Instruct",
+                    "Qwen/Qwen3.5-4B",
+                    "Qwen/Qwen3.5-9B",
                 ]
-                vl_key = "new_chat_qwen_vl_model" if suite == "qwen" else "new_chat_gpt_oss_vl_model"
                 selected_vl = st.selectbox(
-                    "Image Analysis Model (Qwen3-VL)",
+                    "Image Analysis Model (Qwen3.5)",
                     vl_options,
-                    key=vl_key,
-                    help="Pick a specific Qwen3-VL model for image analysis, or select None to use the default toggle"
+                    key="new_chat_gpt_oss_vl_model",
+                    help="Pick a Qwen3.5 model for image analysis, or select None to disable"
                 )
                 if selected_vl != "None":
                     qwen_vl_model_id = selected_vl
                     use_qwen_vl_for_images = True
                 else:
-                    img_key = "new_chat_qwen_image_agent" if suite == "qwen" else "new_chat_gpt_oss_image_agent"
                     use_qwen_vl_for_images = st.checkbox(
-                        "Image Analysis (Qwen3-VL)",
+                        "Image Analysis (Qwen3.5)",
                         value=True,
-                        key=img_key,
-                        help="Enable image analysis using the default Qwen3-VL model"
+                        key="new_chat_gpt_oss_image_agent",
+                        help="Enable image analysis using the default Qwen3.5 model"
                     )
-            elif suite == "qwen" and main_is_vl:
-                use_qwen_vl_for_images = False
-            elif suite == "gpt-oss":
-                use_qwen_vl_for_images = False
 
             use_media_analysis = st.checkbox(
                 "Media Analysis (Qwen-Omni)",
@@ -442,7 +430,7 @@ def show_new_chat_config():
                 "Embeddings + Reranker",
                 ["jina", "qwen"],
                 key="new_chat_rag_provider",
-                help="Qwen requires Qwen3-VL embedding/reranker scripts to be available",
+                help="Qwen requires Qwen3-VL embedding/reranker models to be available",
             )
 
             agent_config = {
