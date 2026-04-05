@@ -11,6 +11,7 @@ from .model_wrappers.qwen3_vl_embeddings import Qwen3VLEmbeddings
 from .model_wrappers.qwen3_vl_reranker import Qwen3VLReranker
 from .model_wrappers.devstral_llm import DevstralLLM
 from .model_wrappers.qwen35_multimodal import Qwen35MultiModal
+from .model_wrappers.gemma4_multimodal import Gemma4MultiModal
 from .model_wrappers.ministral_multimodal import MinistralMultiModal
 from .model_wrappers.gpt_oss_llm import GPTOSSLLM
 from .model_wrappers.gemini_multimodal import GeminiMultimodalLLM
@@ -252,6 +253,49 @@ def get_or_create_ministral_llm(model_name: Optional[str] = None, device: Option
             raise
 
         _MINISTRAL_CACHE[key] = inst
+        return inst
+
+
+def get_or_create_gemma4_llm(model_name: Optional[str] = None, device: Optional[str] = None):
+    """Return cached Gemma4MultiModal or create one."""
+    key = (model_name or "google/gemma-4-E4B-it", device or "auto")
+    inst = _LLM_CACHE.get(key)
+    if inst is not None:
+        return inst
+
+    with _CACHE_LOCK:
+        inst = _LLM_CACHE.get(key)
+        if inst is not None:
+            return inst
+
+        _logger.info("Creating Gemma4MultiModal for key=%s", key)
+        try:
+            before_alloc = None
+            if torch.cuda.is_available():
+                try:
+                    before_alloc = torch.cuda.memory_allocated()
+                except Exception:
+                    pass
+
+            inst = Gemma4MultiModal(model_id=key[0], device_map=key[1])
+
+            after_alloc = None
+            if torch.cuda.is_available():
+                try:
+                    after_alloc = torch.cuda.memory_allocated()
+                except Exception:
+                    pass
+
+            _logger.info(
+                "Gemma4MultiModal created (mem_before=%s, mem_after=%s)",
+                before_alloc,
+                after_alloc,
+            )
+        except Exception:
+            _logger.exception("Failed to create Gemma4MultiModal for key=%s", key)
+            raise
+
+        _LLM_CACHE[key] = inst
         return inst
 
 

@@ -260,13 +260,19 @@ def _build_local_config(framework: str) -> Dict[str, Any]:
 
     suite = st.selectbox(
         "Model Suite",
-        ["qwen", "ministral", "gpt-oss"],
+        ["qwen", "gemma4", "ministral", "gpt-oss"],
         key="new_chat_suite",
-        help="Qwen: Multimodal models | Ministral: Fast lightweight models | GPT-OSS: Local OpenAI OSS model",
+        help="Qwen: Multimodal models | Gemma 4: native multimodal Gemma models | Ministral: Fast lightweight models | GPT-OSS: Local OpenAI OSS model",
     )
 
     if suite == "qwen":
         models = ["Qwen/Qwen3.5-35B-A3B", "Qwen/Qwen3.5-9B"]
+    elif suite == "gemma4":
+        models = [
+            "google/gemma-4-E4B-it",
+            "google/gemma-4-26B-A4B-it",
+            "google/gemma-4-31B-it",
+        ]
     elif suite == "gpt-oss":
         models = ["openai/gpt-oss-20b"]
     else:

@@ -23,6 +23,7 @@ from .custom_models import (
     get_or_create_jina_reranker,
     get_or_create_jina_embedder,
     get_or_create_qwen35_llm,
+    get_or_create_gemma4_llm,
     get_or_create_devstral_llm,
     get_or_create_qwen_embedder,
     get_or_create_gpt_oss_llm,
@@ -200,7 +201,35 @@ def initialize_models(
         img_gen_model_instance = None
         img_edit_model_instance = None
 
-        if model_suite == "ministral":
+        if model_suite == "gemma4":
+            model_id = local_model_id or "google/gemma-4-E4B-it"
+            logger.info("Initializing Gemma 4 suite: %s", model_id)
+            proj_llm_instance = get_or_create_gemma4_llm(model_name=model_id, device="auto")
+            if use_main_model_for_code_agent:
+                code_llm_instance = proj_llm_instance
+                logger.info("Using Gemma 4 main model for code execution")
+            else:
+                code_llm_instance = get_or_create_devstral_llm()
+
+            if media_analysis_enabled:
+                logger.info("Initializing Qwen3-Omni-30B for media analysis")
+                media_analysis_llm_instance = get_or_create_qwen3_omni_llm(
+                    model_name="Qwen/Qwen3-Omni-30B-A3B-Instruct",
+                    device="auto",
+                )
+
+            if img_generation_enabled or img_editing_enabled:
+                try:
+                    from .custom_models import DIFFUSERS_AVAILABLE
+                    if DIFFUSERS_AVAILABLE:
+                        from .custom_models import get_or_create_image_generator, get_or_create_image_editor
+                        if img_generation_enabled:
+                            img_gen_model_instance = get_or_create_image_generator()
+                        if img_editing_enabled:
+                            img_edit_model_instance = get_or_create_image_editor()
+                except Exception as exc:
+                    logger.warning("Image generation/editing initialization failed: %s", exc)
+        elif model_suite == "ministral":
             model_id = local_model_id or "mistralai/Ministral-3-8B-Instruct-2512"
             logger.info("Initializing Ministral suite: %s", model_id)
             proj_llm_instance = get_or_create_ministral_llm(model_name=model_id, device="auto")

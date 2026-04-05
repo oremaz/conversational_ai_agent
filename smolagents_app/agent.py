@@ -31,6 +31,12 @@ if not any(isinstance(h, logging.StreamHandler) for h in root_logger.handlers):
 root_logger.setLevel(logging.INFO)
 logger.setLevel(logging.INFO)
 
+# Map each provider to the settings attribute that holds its API key.
+_PROVIDER_API_KEY_ATTR = {
+    "gemini": "google_api_key",
+    "openai": "openai_api_key",
+    "openrouter": "openrouter_api_key",
+}
 
 class GAIAAgent:
     """GAIA agent using smolagents with Langfuse observability."""
@@ -52,10 +58,8 @@ class GAIAAgent:
 
         from config import settings as _app_settings
 
-        if provider == "gemini":
-            api_key = _app_settings.google_api_key
-        else:
-            api_key = _app_settings.openai_api_key
+        key_attr = _PROVIDER_API_KEY_ATTR.get(provider, "openai_api_key")
+        api_key = getattr(_app_settings, key_attr, None)
 
         if api_key:
             self.multimodal_tool = UnifiedMultimodalTool(
@@ -143,6 +147,7 @@ class GAIAAgent:
                     output=response,
                     metadata=metadata,
                 )
+
                 trace_id = observation.trace_id
 
             self.langfuse.flush()

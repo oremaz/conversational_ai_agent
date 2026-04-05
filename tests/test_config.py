@@ -53,6 +53,11 @@ class TestAppSettings:
         assert s.use_api_mode is True
         assert s.local_model_suite.value == "ministral"
 
+    def test_loads_gemma4_local_suite(self, monkeypatch):
+        monkeypatch.setenv("LOCAL_MODEL_SUITE", "gemma4")
+        s = AppSettings()
+        assert s.local_model_suite.value == "gemma4"
+
     def test_has_google_key(self, monkeypatch):
         monkeypatch.setenv("GOOGLE_API_KEY", "k")
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)

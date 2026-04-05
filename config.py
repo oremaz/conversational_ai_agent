@@ -37,6 +37,7 @@ class Provider(str, Enum):
 
 class LocalModelSuite(str, Enum):
     QWEN = "qwen"
+    GEMMA4 = "gemma4"
     MINISTRAL = "ministral"
     GPT_OSS = "gpt-oss"
     DEVSTRAL = "devstral"

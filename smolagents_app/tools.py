@@ -1,5 +1,6 @@
 """Tool definitions for the smolagents runner."""
 
+import base64
 import mimetypes
 import os
 import re
@@ -19,6 +20,8 @@ from .prompts import (
     MULTIMODAL_TOOL_DESCRIPTION,
     MULTIMODAL_TASK_PROMPTS,
 )
+
+_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
 class FinalAnswerTool(Tool):
@@ -140,6 +143,14 @@ class UnifiedMultimodalTool(Tool):
             self.client = genai.Client(api_key=api_key, http_options={'api_version': 'v1alpha'})
         elif provider == "openai":
             self.client = OpenAI(api_key=api_key)
+        elif provider == "openrouter":
+            # OpenRouter exposes an OpenAI-compatible chat completions API.
+            # Audio transcription is not available on OpenRouter; images are handled
+            # via standard vision messages (base64 data URLs).
+            self.client = OpenAI(
+                api_key=api_key,
+                base_url=_OPENROUTER_BASE_URL,
+            )
         else:
             raise ValueError(f"Unsupported provider for multimodal tool: {provider}")
         mimetypes.init()
@@ -168,6 +179,19 @@ class UnifiedMultimodalTool(Tool):
                     return self._process_openai_audio(file_path)
                 return f"Unsupported modality for OpenAI: {modality}"
 
+            if self.provider == "openrouter":
+                if modality == "image":
+                    return self._process_openrouter_image(file_path, prompt)
+                # OpenRouter has no transcription endpoint; fall back to a helpful message.
+                if modality in {"audio", "video"}:
+                    return (
+                        "Audio/video transcription is not supported via OpenRouter. "
+                        "Use the get_youtube_transcript tool for YouTube videos, or switch to "
+                        "provider='openai' or provider='gemini' for direct audio/video processing."
+                    )
+                return f"Unsupported modality for OpenRouter: {modality}"
+
+            # Gemini path
             file_size = os.path.getsize(file_path)
             use_files_api = file_size > 20 * 1024 * 1024
 
@@ -222,7 +246,6 @@ class UnifiedMultimodalTool(Tool):
             'webp': 'image/webp',
             'pdf': 'application/pdf',
         }
-
         return fallback_mappings.get(ext, 'application/octet-stream')
 
     def _generate_prompt(self, task: str, modality: str, context: str) -> str:
@@ -230,10 +253,8 @@ class UnifiedMultimodalTool(Tool):
             modality,
             'Analyze this media file.',
         )
-
         if context:
             base_prompt += f" Additional context: {context}"
-
         return base_prompt
 
     def _get_media_resolution(self, modality: str) -> Optional[Dict[str, str]]:
@@ -242,6 +263,8 @@ class UnifiedMultimodalTool(Tool):
         if modality == 'video':
             return {"level": "media_resolution_low"}
         return None
+
+    # ------------------------------------------------------------------ Gemini
 
     def _process_with_files_api(self, file_path: str, prompt: str, modality: str) -> str:
         uploaded_file = self.client.files.upload(file=file_path)
@@ -270,7 +293,6 @@ class UnifiedMultimodalTool(Tool):
             model=self.model_name,
             contents=contents,
         )
-
         return response.text
 
     def _process_inline(self, file_path: str, prompt: str, modality: str) -> str:
@@ -308,8 +330,9 @@ class UnifiedMultimodalTool(Tool):
             model=self.model_name,
             contents=contents,
         )
-
         return response.text
+
+    # ------------------------------------------------------------------ OpenAI
 
     def _select_transcription_model(self) -> str:
         env_model = os.environ.get("OPENAI_TRANSCRIBE_MODEL")
@@ -324,7 +347,6 @@ class UnifiedMultimodalTool(Tool):
                 purpose="vision",
             )
         image_part = {"type": "input_image", "file_id": result.id}
-
         response = self.client.responses.create(
             model=self.model_name,
             input=[{
@@ -358,6 +380,31 @@ class UnifiedMultimodalTool(Tool):
             transcript_text = str(transcription)
 
         return transcript_text.strip()
+
+    # --------------------------------------------------------------- OpenRouter
+
+    def _process_openrouter_image(self, file_path: str, prompt: str) -> str:
+        """Send an image to an OpenRouter vision model via base64 data URL."""
+        mime_type = self._get_mime_type(file_path)
+        with open(file_path, "rb") as handle:
+            image_b64 = base64.b64encode(handle.read()).decode("utf-8")
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime_type};base64,{image_b64}"},
+                    },
+                ],
+            }],
+        )
+        return (response.choices[0].message.content or "").strip()
+
+    # ------------------------------------------------------------------ Utility
 
     def get_file_info(self, file_path: str) -> Dict[str, str]:
         mime_type, encoding = mimetypes.guess_type(file_path)

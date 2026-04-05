@@ -11,11 +11,9 @@ logger = logging.getLogger(__name__)
 _FORMAT_PROVIDER = None
 _FORMAT_MODEL_NAME = None
 
-
 def get_format_config() -> tuple[str, Optional[str]]:
     """Return provider/model overrides for formatting."""
     return _FORMAT_PROVIDER or "gemini", _FORMAT_MODEL_NAME
-
 
 def initialize_llm_model(
     provider: str = "gemini",
@@ -32,6 +30,10 @@ def initialize_llm_model(
         "openai": {
             "env_var": "OPENAI_API_KEY",
             "api_base": None,
+        },
+        "openrouter": {
+            "env_var": "OPENROUTER_API_KEY",
+            "api_base": "https://openrouter.ai/api/v1",
         },
     }
 
@@ -52,6 +54,17 @@ def initialize_llm_model(
     client_kwargs = model_kwargs.pop("client_kwargs", {}) or {}
     client_kwargs.setdefault("timeout", 60)
     client_kwargs.setdefault("max_retries", 2)
+
+    # OpenRouter recommends sending HTTP-Referer / X-Title for analytics.
+    # Pass them as default_headers, which the openai SDK forwards on every request.
+    if provider == "openrouter":
+        default_headers = client_kwargs.setdefault("default_headers", {})
+        default_headers.setdefault("HTTP-Referer", model_kwargs.pop("site_url", ""))
+        default_headers.setdefault("X-Title", model_kwargs.pop("site_name", ""))
+        # Remove keys with empty values to keep headers clean
+        client_kwargs["default_headers"] = {
+            k: v for k, v in default_headers.items() if v
+        } or None
 
     init_args = {
         "model_id": model_name,

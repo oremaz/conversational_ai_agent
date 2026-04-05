@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 
 _GENAI_CLIENT = None
 _OPENAI_CLIENT = None
+_OPENROUTER_CLIENT = None
+
+_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
 class ExtractedAnswer(BaseModel):
@@ -45,11 +48,32 @@ def llm_reformat(response: str, question: str) -> str:
                 messages=[{"role": "user", "content": format_prompt}],
                 response_format=ExtractedAnswer,
             )
-
             if completion.choices[0].message.parsed:
                 return completion.choices[0].message.parsed.final_answer
             return response
 
+        if provider == "openrouter":
+            global _OPENROUTER_CLIENT
+            api_key = os.environ.get("OPENROUTER_API_KEY")
+            if not api_key:
+                return response
+            if _OPENROUTER_CLIENT is None:
+                _OPENROUTER_CLIENT = OpenAI(
+                    api_key=api_key,
+                    base_url=_OPENROUTER_BASE_URL,
+                )
+
+            # OpenRouter supports structured outputs via the same OpenAI-compatible endpoint.
+            completion = _OPENROUTER_CLIENT.beta.chat.completions.parse(
+                model=model_name,
+                messages=[{"role": "user", "content": format_prompt}],
+                response_format=ExtractedAnswer,
+            )
+            if completion.choices[0].message.parsed:
+                return completion.choices[0].message.parsed.final_answer
+            return response
+
+        # Gemini path (default)
         global _GENAI_CLIENT
         api_key = os.environ.get("GOOGLE_API_KEY")
         if not api_key:
@@ -65,7 +89,6 @@ def llm_reformat(response: str, question: str) -> str:
                 "response_json_schema": ExtractedAnswer.model_json_schema(),
             },
         )
-
         parsed = json.loads(formatting_response.text)
         return parsed.get("final_answer", response)
 

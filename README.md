@@ -8,7 +8,7 @@ Production-grade conversational AI agent with a Streamlit UI, LlamaIndex-based m
 - **Multi-agent workflow** (`ReActAgent` + `AgentWorkflow`) with a research agent and optional specialized agents (code execution, image analysis, media analysis, image generation/editing).
 - **Modes**:
   - **API mode**: Gemini, OpenAI, or OpenRouter (selected per chat in the UI). Supports vector memory using provider embeddings; web search returns LLM-summarized answers from fetched pages.
-  - **Local mode**: Qwen, Ministral, or GPT-OSS suites with specialized models (text, vision, audio/video, code, optional image generation/editing if diffusers are available).
+  - **Local mode**: Qwen, Gemma 4, Ministral, or GPT-OSS suites with specialized models (text, vision, audio/video, code, optional image generation/editing if diffusers are available).
 - **Document handling**:
   - Docling for PDFs, Office files, and HTML.
   - CSV/Excel/JSON/text readers for structured data.
@@ -23,7 +23,7 @@ Production-grade conversational AI agent with a Streamlit UI, LlamaIndex-based m
 - **smolagents agent** built on `CodeAgent` with:
   - Web search (DuckDuckGo), page visiting, YouTube transcript, Python interpreter, and optional multimodal tool.
   - Optional MCP tool collections (filesystem, GitHub, Brave Search, Slack, Google Maps, Postgres, PubMed).
-- Supports **Gemini** and **OpenAI** via `OpenAIServerModel`.
+- Supports **Gemini**, **OpenAI**, and **OpenRouter** via `OpenAIServerModel`.
 - Optional multimodal tool:
   - **Gemini**: images/audio/video via Gemini SDK.
   - **OpenAI**: images via Responses API; audio/video via transcription models.
@@ -228,7 +228,7 @@ llama_index_app/
   models.py                         # Model initialization & global config
   model_wrappers/                   # CustomLLM implementations
     base.py                         # Framework-agnostic ModelProvider interface
-    ...                             # Qwen, Gemini, OpenAI, Ministral, Jina wrappers
+    ...                             # Qwen, Gemma 4, Gemini, OpenAI, Ministral, Jina wrappers
   utils/
     vector_store.py                 # ChromaDB + Jina embeddings
     document_processor.py           # Docling-based file parsing
