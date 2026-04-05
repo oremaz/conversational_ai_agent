@@ -150,13 +150,12 @@ python -m pytest tests/ -v
 
 ### Create a chat
 1. Click **New Chat** in the sidebar.
-2. In **Settings**, provide at least one API key: `GOOGLE_API_KEY`, `OPENAI_API_KEY`, or `OPENROUTER_API_KEY`.
-3. Choose:
+2. Choose:
    - **Framework**: `llamaindex` or `smolagents`.
    - **Mode**: `API` or `Local` (smolagents requires API).
   - **Provider/Model** and specialized feature toggles.
   - If provider is **OpenRouter** (LlamaIndex API mode), the default model path is shown and can be edited in-app.
-4. Click **Create Chat**.
+3. Click **Create Chat**.
 
 ### Upload documents
 - **Local LlamaIndex**: documents are indexed into a per-chat vector store and cached in the shared library.

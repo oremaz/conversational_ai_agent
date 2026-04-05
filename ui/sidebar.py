@@ -15,15 +15,6 @@ from utils.session_manager import ChatSession
 logger = logging.getLogger(__name__)
 
 
-def _set_api_key_env(var_name: str, value: str) -> None:
-    """Set or clear an API key environment variable from UI input."""
-    cleaned = (value or "").strip()
-    if cleaned:
-        os.environ[var_name] = cleaned
-    else:
-        os.environ.pop(var_name, None)
-
-
 def _has_any_api_key() -> bool:
     """Return whether any supported API key is present in runtime env."""
     return any(
@@ -180,7 +171,7 @@ def show_new_chat_config():
         if use_api:
             if not _has_any_api_key():
                 st.error(
-                    "API mode requires one key in Settings: GOOGLE_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY"
+                    "API mode requires one environment variable: GOOGLE_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY"
                 )
                 return
             agent_config = _build_api_config(framework)
@@ -228,7 +219,7 @@ def _build_api_config(framework: str) -> Dict[str, Any]:
     }
     required_key = provider_to_env[provider]
     if not os.environ.get(required_key, "").strip():
-        st.error(f"{required_key} is required for provider '{provider}'. Set it in Settings.")
+        st.error(f"{required_key} is required for provider '{provider}'. Set it in your environment.")
         return None
 
     use_specialized_code_model = False
@@ -470,32 +461,9 @@ def render_settings():
 
     st.sidebar.header("Settings")
 
-    google_api_key = st.sidebar.text_input(
-        "GOOGLE_API_KEY",
-        type="password",
-        value=os.environ.get("GOOGLE_API_KEY", ""),
-        help="Gemini API key",
-        key="settings_google_api_key",
+    st.sidebar.caption(
+        "API keys are read from environment variables only (not editable in the app)."
     )
-    _set_api_key_env("GOOGLE_API_KEY", google_api_key)
-
-    openai_api_key = st.sidebar.text_input(
-        "OPENAI_API_KEY",
-        type="password",
-        value=os.environ.get("OPENAI_API_KEY", ""),
-        help="OpenAI API key",
-        key="settings_openai_api_key",
-    )
-    _set_api_key_env("OPENAI_API_KEY", openai_api_key)
-
-    openrouterapikey = st.sidebar.text_input(
-        "OPENROUTER_API_KEY",
-        type="password",
-        value=os.environ.get("OPENROUTER_API_KEY", ""),
-        help="OpenRouter API key",
-        key="settings_openrouter_api_key",
-    )
-    _set_api_key_env("OPENROUTER_API_KEY", openrouterapikey)
 
     with st.sidebar.expander("API Keys Status"):
         for name, present in settings.api_key_status().items():
