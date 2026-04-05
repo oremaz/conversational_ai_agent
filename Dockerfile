@@ -7,6 +7,10 @@ FROM python:3.13-slim AS base
 
 WORKDIR /app
 
+# Use an in-container virtualenv so installs mirror local uv workflows.
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+
 # System dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -21,8 +25,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 # Copy dependency files first for layer caching
 COPY requirements.txt requirements.lock ./
 
-# Install Python dependencies
-RUN uv pip install --system -r requirements.txt
+# Create venv and install pinned Python dependencies into it
+RUN uv venv ${VIRTUAL_ENV} && \
+    uv pip install --python ${VIRTUAL_ENV}/bin/python -r requirements.lock
 
 # Copy application code
 COPY . .
