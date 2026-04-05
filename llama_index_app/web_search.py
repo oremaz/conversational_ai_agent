@@ -13,6 +13,7 @@ from . import models
 from .rag import create_temporary_web_search_index, get_rag_reranker
 from .model_wrappers.utils import offload_rag_models
 from .utils.document_processor import UserAgentWebPageReader
+from utils.retry import retry_with_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,15 @@ def _extract_urls_from_results(results: List[Dict[str, Any]], max_results: int) 
     return urls
 
 
+@retry_with_backoff(max_retries=2, base_delay=1.0, retryable_exceptions=(Exception,))
+def _ddgs_search(query: str, max_results: int, backend_kwargs: dict) -> list:
+    """Execute a single DDGS search with retry support."""
+    kwargs = {"max_results": max_results}
+    kwargs.update(backend_kwargs)
+    with DDGS() as ddg:
+        return list(ddg.text(query, **kwargs))
+
+
 def search_for_urls(query: str, max_results: int = 3) -> List[str]:
     logger.info("[web] start search: %s", query)
     ddgs_errors: List[str] = []
@@ -47,10 +57,7 @@ def search_for_urls(query: str, max_results: int = 3) -> List[str]:
 
     for backend_name, backend_kwargs in backend_attempts:
         try:
-            kwargs = {"max_results": max_results}
-            kwargs.update(backend_kwargs)
-            with DDGS() as ddg:
-                results = list(ddg.text(query, **kwargs))
+            results = _ddgs_search(query, max_results, backend_kwargs)
             logger.info("[web] ddgs backend='%s' results: %d", backend_name, len(results))
             urls = _extract_urls_from_results(results, max_results)
             if urls:
@@ -152,8 +159,26 @@ def enhanced_web_search_and_query(query: str) -> str:
         return f"Failed to extract web content: {error_msg}"
 
     if models.USE_API_MODE:
-        logger.info("API mode web search: returning raw content for %d documents", len(valid_documents))
-        return format_web_search_documents(valid_documents)
+        logger.info("API mode web search: LLM-summarized answer for %d documents", len(valid_documents))
+        context_parts = []
+        for doc in valid_documents[:5]:
+            source = (doc.metadata or {}).get("source", "unknown")
+            text = (doc.text or "")[:3000]
+            context_parts.append(f"Source: {source}\n{text}")
+        context_text = "\n\n---\n\n".join(context_parts)
+
+        summary_prompt = (
+            f"Based on the following web search results, provide a focused and accurate answer "
+            f"to the query: \"{query}\"\n\n"
+            f"Web search results:\n{context_text}\n\n"
+            f"Provide a clear, concise answer with key facts. Cite sources where relevant."
+        )
+        try:
+            response = models.proj_llm.complete(summary_prompt)
+            return str(response)
+        except Exception as exc:
+            logger.warning("LLM summarization failed, falling back to formatted content: %s", exc)
+            return format_web_search_documents(valid_documents)
 
     logger.info("Creating temporary index for %d documents from web search", len(valid_documents))
 

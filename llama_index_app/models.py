@@ -3,10 +3,21 @@
 import logging
 import os
 import sys
+import warnings
 from typing import Dict, Any, Optional
 
 import weave
 from llama_index.core import Settings
+
+# Suppress a noisy third-party warning that does not affect runtime behavior.
+warnings.filterwarnings(
+    "ignore",
+    message=r".*The 'validate_default' attribute with value True was provided to the `Field\(\)` function.*",
+)
+warnings.filterwarnings(
+    "ignore",
+    message=r".*Accessing `__path__` from `\.models\.zoedepth\.image_processing_zoedepth`.*",
+)
 
 from .custom_models import (
     get_or_create_jina_reranker,
@@ -18,10 +29,21 @@ from .custom_models import (
     get_or_create_ministral_llm,
     get_or_create_gemini_llm,
     get_or_create_openai_llm,
+    get_or_create_openrouter_llm,
     get_or_create_qwen3_omni_llm,
+    get_or_create_gemini_embedder,
+    get_or_create_openai_embedder,
+    get_or_create_openrouter_embedder,
 )
 
-weave.init("conversational-ai-agent")
+# Weave tracing is opt-in to avoid interactive wandb login prompts in local/dev runs.
+_WEAVE_ENABLED = os.environ.get("WEAVE_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+if _WEAVE_ENABLED:
+    try:
+        weave.init("conversational-ai-agent")
+    except Exception:
+        # Keep application startup non-blocking if tracing cannot initialize.
+        logging.getLogger(__name__).exception("Weave initialization failed; continuing without tracing")
 
 # Setup logging - force INFO logs to stdout so they are visible in notebooks/terminals
 root_logger = logging.getLogger()
@@ -47,10 +69,13 @@ logging.getLogger("llama_index.llms").setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Use environment variables to determine API mode
-USE_API_MODE = os.environ.get("USE_API_MODE", "false").lower() == "true"
-LOCAL_MODEL_SUITE = os.environ.get("LOCAL_MODEL_SUITE", "qwen").lower()
-RAG_PROVIDER = os.environ.get("RAG_PROVIDER", "jina").lower()
+# Use centralized config for defaults, but keep module-level mutables
+# for backward compatibility with configure_models()
+from config import settings as _app_settings
+
+USE_API_MODE = _app_settings.use_api_mode
+LOCAL_MODEL_SUITE = _app_settings.local_model_suite.value
+RAG_PROVIDER = _app_settings.rag_provider.value
 
 # Lazy-initialized globals (configured in configure_models)
 embed_model = None
@@ -87,9 +112,9 @@ def initialize_models(
             logger.info("Initializing models in API mode...")
 
             provider_order = []
-            if model_suite in ("gemini", "openai"):
+            if model_suite in ("gemini", "openai", "openrouter"):
                 provider_order.append(model_suite)
-            for provider in ("gemini", "openai"):
+            for provider in ("gemini", "openai", "openrouter"):
                 if provider not in provider_order:
                     provider_order.append(provider)
 
@@ -104,10 +129,7 @@ def initialize_models(
                         session_id=session_id,
                     )
                     code_llm_instance = proj_llm_instance
-                    if rag_provider == "qwen":
-                        embed_model_instance = get_or_create_qwen_embedder()
-                    else:
-                        embed_model_instance = get_or_create_jina_embedder()
+                    embed_model_instance = get_or_create_gemini_embedder()
                     return embed_model_instance, proj_llm_instance, code_llm_instance
 
                 if provider == "openai":
@@ -120,10 +142,20 @@ def initialize_models(
                         session_id=session_id,
                     )
                     code_llm_instance = proj_llm_instance
-                    if rag_provider == "qwen":
-                        embed_model_instance = get_or_create_qwen_embedder()
-                    else:
-                        embed_model_instance = get_or_create_jina_embedder()
+                    embed_model_instance = get_or_create_openai_embedder()
+                    return embed_model_instance, proj_llm_instance, code_llm_instance
+
+                if provider == "openrouter":
+                    openrouter_api_key = os.environ.get("OPENROUTER_API_KEY")
+                    if not openrouter_api_key:
+                        continue
+                    logger.info("Using OpenRouter API with model: %s", api_model_name or "default")
+                    proj_llm_instance = get_or_create_openrouter_llm(
+                        model_name=api_model_name,
+                        session_id=session_id,
+                    )
+                    code_llm_instance = proj_llm_instance
+                    embed_model_instance = get_or_create_openrouter_embedder()
                     return embed_model_instance, proj_llm_instance, code_llm_instance
 
             # No API keys found, fall back to local mode

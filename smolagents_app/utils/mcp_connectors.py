@@ -120,7 +120,17 @@ def load_mcp_server(
             f"Missing required environment variables for {server_name}: {', '.join(missing_vars)}"
         )
 
-    env = {**os.environ}
+    # Scope the environment to only required variables + PATH/HOME
+    # instead of exposing the full os.environ to subprocesses
+    env = {
+        "PATH": os.environ.get("PATH", ""),
+        "HOME": os.environ.get("HOME", ""),
+        "LANG": os.environ.get("LANG", "en_US.UTF-8"),
+    }
+    for var in server_config.get("env_vars", []):
+        val = os.environ.get(var)
+        if val:
+            env[var] = val
 
     if server_config["command"] == "uvx":
         env["UV_PYTHON"] = "3.12"

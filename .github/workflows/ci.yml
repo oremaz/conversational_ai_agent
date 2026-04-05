@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install ruff
+        run: uv pip install ruff --system
+
+      - name: Run ruff check
+        run: ruff check .
+
+      - name: Run ruff format check
+        run: ruff format --check .
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Create venv and install test deps
+        run: |
+          uv venv .venv
+          source .venv/bin/activate
+          uv pip install pydantic pydantic-settings fastapi httpx pytest pytest-asyncio uvicorn python-dotenv
+
+      - name: Run tests
+        env:
+          GOOGLE_API_KEY: "test-key"
+          OPENAI_API_KEY: "test-key"
+        run: |
+          source .venv/bin/activate
+          python -m pytest tests/ -v --tb=short

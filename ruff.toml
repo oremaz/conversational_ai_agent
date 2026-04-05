@@ -1,0 +1,21 @@
+target-version = "py313"
+line-length = 120
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in default arg (FastAPI Depends)
+    "SIM108", # ternary operator
+]
+
+[lint.isort]
+known-first-party = ["llama_index_app", "smolagents_app", "utils", "ui", "api", "config"]

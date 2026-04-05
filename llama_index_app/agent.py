@@ -80,9 +80,13 @@ class ConversationalAgent:
         if not hf_token:
             logger.warning("Warning: HUGGINGFACEHUB_API_TOKEN not found, some features may not work")
 
-        self.vector_store_manager = VectorStoreManager(
-            conversations_dir="./chroma_db/conversations",
-        )
+        if self.use_api_mode:
+            self.vector_store_manager = None
+        else:
+            self.vector_store_manager = VectorStoreManager(
+                conversations_dir="./chroma_db/conversations",
+                embedder_provider=rag_provider,
+            )
 
         self.web_tool = make_enhanced_web_search_tool()
         self.web_function_tool = FunctionTool.from_defaults(
@@ -302,8 +306,9 @@ class ConversationalAgent:
         try:
             ctx = Context(self.coordinator)
             logger.info("=== AGENT REASONING STEPS ===")
-            stats = self.vector_store_manager.get_stats()
-            logger.info("Cached sources available: %s", stats.get("library_sources", 0))
+            if self.vector_store_manager:
+                stats = self.vector_store_manager.get_stats()
+                logger.info("Cached sources available: %s", stats.get("library_sources", 0))
 
             handler = self.coordinator.run(ctx=ctx, user_msg=context_prompt)
             full_response = ""
@@ -346,4 +351,6 @@ class ConversationalAgent:
 
     def get_knowledge_base_stats(self):
         """Return statistics about the current knowledge base."""
-        return self.vector_store_manager.get_stats()
+        if self.vector_store_manager:
+            return self.vector_store_manager.get_stats()
+        return {}

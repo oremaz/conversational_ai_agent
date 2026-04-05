@@ -1,0 +1,45 @@
+{
+  "session_id": "8b0647c4-20b7-4a82-a04b-4e2787437a51",
+  "title": "Llamaindex - qwen3.6-plus:free",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello, what's the weather in Paris tomorrow? What's the top three news today in France and the world? Make me a presentation like if I'll see the journal in the TV (headlines + details)",
+      "timestamp": "2026-04-05T16:43:50.555642",
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "🎙️ **GOOD EVENING AND WELCOME TO YOUR DAILY NEWS BROADCAST** 📺\n\n🌤️ **WEATHER FORECAST: PARIS TOMORROW**\n*Headline:* Overcast skies and dry conditions expected for the capital.\n*Details:* Tomorrow, Monday, April 6th, Paris will remain mainly cloudy. No rain or snow is forecasted. Winds will be calm to light, primarily blowing from the east. Humidity will drop to a low of around 39% in the mid-afternoon before rising again in the evening. The UV index will reach a moderate peak of 6 around 2:00 PM. Overall, a calm and dry day, perfect for a light jacket and outdoor plans.\n\n📰 **TOP 3 HEADLINES: FRANCE & THE WORLD**\n\n1️⃣ **FRANCE: Political & Legal Storm Surrounds MEP Rima Hassan**\n*Headline:* French MEP Rima Hassan taken into custody, alleges political harassment.\n*Details:* The French Member of the European Parliament, representing La France Insoumise, has been taken into police custody. She has publicly denounced what she calls \"genuine judicial and political harassment.\" The incident has quickly ignited intense debate across the French political landscape and within the European Parliament.\n\n2️⃣ **WORLD: Middle East Escalation & Strait of Hormuz Tensions**\n*Headline:* US-Israel military campaign against Iran intensifies; regional security tightens.\n*Details:* Regional tensions are soaring as reports indicate ongoing strikes are impacting critical medical infrastructure. In response to the heightened security climate, Easter church gatherings have been suspended in Dubai. Meanwhile, commercial vessels from France, Oman, and Japan are carefully navigating the strategic Strait of Hormuz under close military watch.\n\n3️⃣ **GLOBAL POLICY & HEALTHCARE: Major Medical Reform & European Security Focus**\n*Headline:* State medical insurance overhaul rolls out alongside ongoing geopolitical developments.\n*Details:* A significant new state medical insurance reform is being implemented nationwide to expand coverage and reshape healthcare access. Simultaneously, international news cycles remain heavily focused on the ongoing war in Ukraine and recent European military developments, keeping defense and security at the forefront of global discussions.\n\n🔚 **That wraps up today's broadcast. Thank you for watching, stay informed, and have a wonderful evening.**",
+      "timestamp": "2026-04-05T16:47:21.452502",
+      "metadata": {}
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-04-05T16:43:39.917096",
+    "updated_at": "2026-04-05T16:47:21.452525",
+    "vector_store_id": "vs_8b0647c4-20b7-4a82-a04b-4e2787437a51",
+    "agent_config": {
+      "framework": "llamaindex",
+      "mode": "api",
+      "llm_provider": "openrouter",
+      "llm_model": "qwen/qwen3.6-plus:free",
+      "code_execution_enabled": true,
+      "use_specialized_code_model": false,
+      "img_generation_enabled": false,
+      "img_editing_enabled": false,
+      "media_analysis_enabled": false
+    }
+  },
+  "agent_config": {
+    "framework": "llamaindex",
+    "mode": "api",
+    "llm_provider": "openrouter",
+    "llm_model": "qwen/qwen3.6-plus:free",
+    "code_execution_enabled": true,
+    "use_specialized_code_model": false,
+    "img_generation_enabled": false,
+    "img_editing_enabled": false,
+    "media_analysis_enabled": false
+  }
+}

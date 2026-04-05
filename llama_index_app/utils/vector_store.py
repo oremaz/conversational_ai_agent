@@ -1,4 +1,4 @@
-"""ChromaDB vector store management for LlamaIndex local mode."""
+"""ChromaDB vector store management for LlamaIndex local and API modes."""
 
 import hashlib
 import json
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class VectorStoreManager:
     """Manage conversation-specific stores and shared cached sources.
 
-    This is only used for LlamaIndex local mode and uses the configured embeddings.
+    Supports both local (Jina/Qwen) and API-based (Gemini/OpenAI) embeddings.
     """
 
     def __init__(
@@ -46,7 +46,16 @@ class VectorStoreManager:
 
         # Import and initialize embeddings
         self.embedder_provider = embedder_provider
-        if self.embedder_provider == "qwen":
+        if self.embedder_provider == "gemini":
+            from ..custom_models import get_or_create_gemini_embedder
+            self.embed_model = get_or_create_gemini_embedder()
+        elif self.embedder_provider == "openai":
+            from ..custom_models import get_or_create_openai_embedder
+            self.embed_model = get_or_create_openai_embedder()
+        elif self.embedder_provider == "openrouter":
+            from ..custom_models import get_or_create_openrouter_embedder
+            self.embed_model = get_or_create_openrouter_embedder()
+        elif self.embedder_provider == "qwen":
             from ..custom_models import get_or_create_qwen_embedder
             self.embed_model = get_or_create_qwen_embedder()
         else:

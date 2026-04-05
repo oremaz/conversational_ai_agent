@@ -50,10 +50,12 @@ class GAIAAgent:
         self.user_id = user_id or "gaia-user"
         self.session_id = session_id or "gaia-session"
 
+        from config import settings as _app_settings
+
         if provider == "gemini":
-            api_key = os.environ.get("GOOGLE_API_KEY")
+            api_key = _app_settings.google_api_key
         else:
-            api_key = os.environ.get("OPENAI_API_KEY")
+            api_key = _app_settings.openai_api_key
 
         if api_key:
             self.multimodal_tool = UnifiedMultimodalTool(

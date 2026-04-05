@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"   # Streamlit UI
+      - "8000:8000"   # FastAPI (if running)
+    env_file:
+      - .env
+    volumes:
+      - chat_data:/app/.chat_sessions
+      - chroma_data:/app/chroma_db
+    restart: unless-stopped
+
+  # Uncomment for GPU support:
+  # app-gpu:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.gpu
+  #   ports:
+  #     - "8501:8501"
+  #     - "8000:8000"
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - chat_data:/app/.chat_sessions
+  #     - chroma_data:/app/chroma_db
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+  #   restart: unless-stopped
+
+volumes:
+  chat_data:
+  chroma_data:

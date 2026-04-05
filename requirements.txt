@@ -16,24 +16,24 @@ openai
 # Unified Embeddings & Vector Store (Jina Only)
 # ============================================================================
 numpy<2
-sentence-transformers       
-chromadb             
+sentence-transformers
+chromadb
 llama-index-vector-stores-chroma
 
 # ============================================================================
 # Document & Web Processing (Minimalist & Efficient)
 # ============================================================================
-docling              
+docling
 llama-index-readers-docling
-llama-index-readers-file 
-llama-index-readers-web  
-html2text 
-pypdf               
+llama-index-readers-file
+llama-index-readers-web
+html2text
+pypdf
 pandas
-openpyxl                    
-duckduckgo-search  
-ddgs 
-youtube-transcript-api      
+openpyxl
+duckduckgo-search
+ddgs
+youtube-transcript-api
 llama-index-readers-youtube-transcript
 matplotlib
 seaborn
@@ -46,7 +46,20 @@ tqdm
 # ============================================================================
 # MCP & Tools
 # ============================================================================
-mcp               
+mcp
+
+# ============================================================================
+# API Layer
+# ============================================================================
+fastapi
+uvicorn[standard]
+httpx
+
+# ============================================================================
+# Testing
+# ============================================================================
+pytest
+pytest-asyncio
 
 # ============================================================================
 # UI & Observability
@@ -67,10 +80,11 @@ accelerate
 kernels
 einops
 sentencepiece
-nest-asyncio                
+nest-asyncio
 requests
 python-dotenv
 pydantic
+pydantic-settings
 
 # ============================================================================
 # Diffusion Models & Audio

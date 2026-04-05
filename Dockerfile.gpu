@@ -1,0 +1,41 @@
+# ===========================================================================
+# Conversational AI Agent - GPU variant (CUDA 12.6)
+# ===========================================================================
+
+FROM nvidia/cuda:12.6.3-runtime-ubuntu24.04 AS base
+
+WORKDIR /app
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# System dependencies + Python
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3.13 python3.13-venv python3-pip \
+        build-essential curl git \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3.13 /usr/bin/python
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Copy dependency files first for layer caching
+COPY requirements.txt requirements.lock ./
+
+# Install Python dependencies (includes PyTorch with CUDA)
+RUN uv pip install --system -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Create directories for runtime data
+RUN mkdir -p .chat_sessions chroma_db .prompt_media
+
+# Expose ports
+EXPOSE 8501 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
+CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]

@@ -15,6 +15,7 @@ from .model_wrappers.ministral_multimodal import MinistralMultiModal
 from .model_wrappers.gpt_oss_llm import GPTOSSLLM
 from .model_wrappers.gemini_multimodal import GeminiMultimodalLLM
 from .model_wrappers.openai_multimodal import OpenAIMultimodalLLM
+from .model_wrappers.openrouter_multimodal import OpenRouterMultimodalLLM
 from .model_wrappers.qwen3_omni_multimodal import Qwen3OmniMultiModal
 from .model_wrappers.qwen_image_generator import QwenImageGenerator
 from .model_wrappers.qwen_image_editor import QwenImageEditor
@@ -400,6 +401,88 @@ def get_or_create_openai_llm(
 
         _logger.info("Creating OpenAIMultimodalLLM for key=%s", key[0])
         inst = OpenAIMultimodalLLM(model_id=key[0], api_key=key[1])
+        _API_CLIENT_CACHE[key] = inst
+        return inst
+
+
+def get_or_create_gemini_embedder(model_name: Optional[str] = None):
+    """Return cached GeminiEmbeddings or create one."""
+    from .model_wrappers.gemini_embeddings import GeminiEmbeddings
+
+    key = ("gemini_embed", model_name or "gemini-embedding-2-preview")
+    inst = _API_CLIENT_CACHE.get(key)
+    if inst is not None:
+        return inst
+
+    with _CACHE_LOCK:
+        inst = _API_CLIENT_CACHE.get(key)
+        if inst is not None:
+            return inst
+
+        _logger.info("Creating Gemini embedder for key=%s", key)
+        inst = GeminiEmbeddings(model_name=key[1])
+        _API_CLIENT_CACHE[key] = inst
+        return inst
+
+
+def get_or_create_openai_embedder(model_name: Optional[str] = None):
+    """Return cached OpenAIEmbeddings or create one."""
+    from .model_wrappers.openai_embeddings import OpenAIEmbeddings
+
+    key = ("openai_embed", model_name or "text-embedding-3-small")
+    inst = _API_CLIENT_CACHE.get(key)
+    if inst is not None:
+        return inst
+
+    with _CACHE_LOCK:
+        inst = _API_CLIENT_CACHE.get(key)
+        if inst is not None:
+            return inst
+
+        _logger.info("Creating OpenAI embedder for key=%s", key)
+        inst = OpenAIEmbeddings(model_name=key[1])
+        _API_CLIENT_CACHE[key] = inst
+        return inst
+
+
+def get_or_create_openrouter_llm(
+    model_name: Optional[str] = None,
+    api_key: Optional[str] = None,
+    session_id: Optional[str] = None,
+):
+    """Return cached OpenRouterMultimodalLLM or create one."""
+    key = (model_name or "openai/gpt-5-mini", api_key or os.environ.get("OPENROUTER_API_KEY"), session_id)
+    inst = _API_CLIENT_CACHE.get(key)
+    if inst is not None:
+        return inst
+
+    with _CACHE_LOCK:
+        inst = _API_CLIENT_CACHE.get(key)
+        if inst is not None:
+            return inst
+
+        _logger.info("Creating OpenRouterMultimodalLLM for key=%s", key[0])
+        inst = OpenRouterMultimodalLLM(model_id=key[0], api_key=key[1])
+        _API_CLIENT_CACHE[key] = inst
+        return inst
+
+
+def get_or_create_openrouter_embedder(model_name: Optional[str] = None):
+    """Return cached OpenRouterEmbeddings or create one."""
+    from .model_wrappers.openrouter_embeddings import OpenRouterEmbeddings
+
+    key = ("openrouter_embed", model_name or "nvidia/llama-nemotron-embed-vl-1b-v2:free")
+    inst = _API_CLIENT_CACHE.get(key)
+    if inst is not None:
+        return inst
+
+    with _CACHE_LOCK:
+        inst = _API_CLIENT_CACHE.get(key)
+        if inst is not None:
+            return inst
+
+        _logger.info("Creating OpenRouter embedder for key=%s", key)
+        inst = OpenRouterEmbeddings(model_name=key[1])
         _API_CLIENT_CACHE[key] = inst
         return inst
 

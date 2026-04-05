@@ -1,0 +1,15 @@
+.git
+.venv
+__pycache__
+*.pyc
+.env
+.env.local
+.chat_sessions
+chroma_db
+.prompt_media
+offload*
+demo/
+.claude/
+.pytest_cache
+.ruff_cache
+*.egg-info

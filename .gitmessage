@@ -1,0 +1,12 @@
+# <type>(<scope>): <subject>
+#
+# Types: feat, fix, refactor, docs, test, ci, chore, style, perf
+# Scope: agent, ui, api, config, rag, models, mcp, tools, session
+#
+# Examples:
+#   feat(agent): add Qwen3.5 multimodal support
+#   fix(rag): prevent OOM during hierarchical chunking
+#   refactor(ui): decompose app.py into modules
+#   test(session): add persistence roundtrip tests
+#   ci: add ruff linting to GitHub Actions
+#   docs: update README with Docker instructions
