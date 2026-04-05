@@ -154,7 +154,7 @@ python -m pytest tests/ -v
    - **Framework**: `llamaindex` or `smolagents`.
    - **Mode**: `API` or `Local` (smolagents requires API).
   - **Provider/Model** and specialized feature toggles.
-  - If provider is **OpenRouter** (LlamaIndex API mode), the default model path is shown and can be edited in-app.
+  - If provider is **OpenRouter**, the default model path is shown and can be edited in-app.
 3. Click **Create Chat**.
 
 ### Upload documents
